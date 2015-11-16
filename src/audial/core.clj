@@ -3,7 +3,6 @@
   (:require [clojure.xml :as xml]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [ring.util.codec :refer [percent-decode]]
             [audial.control :as ctrl]))
 
 (def ^:dynamic *itunes-file*
@@ -12,8 +11,8 @@
 (def parse-itunes-library-file
   (comp :content first :content xml/parse io/input-stream))
 
-(defn- plist-key->keyword [plist-key]
-  (-> plist-key
+(defn- str->keyword [s]
+  (-> s
       str/lower-case
       (str/replace " " "-")
       keyword))
@@ -32,7 +31,7 @@
                      ; tagpair->tag is [XMLTag XMLTag] -> Tag
   (let [tagpair->tag (fn tagpair->tag [[{[k] :content tag :tag}
                            {[& vs] :content}]]
-                       (let [k (plist-key->keyword k)
+                       (let [k (str->keyword k)
                              v (if (solitary? vs)
                                  (first vs)
                                  (if (= tag :array)
@@ -69,21 +68,12 @@
 (defn get-artist [catalog artist]
   (filter #{artist} (:tracks catalog)))
 
-(defn get-file [song]
-  (-> (:location song)
-      percent-decode
-      (str/replace #"^file:/*" "/")))
-
-(defn available? [song]
-  (-> (get-file song)
-      io/as-file
-      .exists))
-
 (defn search [songs q]
-  (let [match? (-> (str "(?i)" q)  ; case-insensitive
-                   re-pattern
-                   (#(partial re-find %))
-                   (fnil ""))
+  (let [qs (str/split q #"\s+")
+        match? (->> (str/join " " (map #(str "(?i)" %) qs))
+                    re-pattern
+                    (partial re-find)
+                    (#(fnil % "")))
         fields (juxt :name :artist :album-artist :album)
         song-match? #(some match? (fields %))]
     (filter song-match? songs)))
@@ -95,7 +85,11 @@
       :no-results
 
       (empty? (rest results))
-      (ctrl/play-song (first results))
+      (let [song (first results)]
+        (if (ctrl/available? song)
+          (do (ctrl/play-song song)
+              :success)
+          :unavailable))
 
       :else results)))
 
@@ -103,6 +97,9 @@
   (-> *itunes-file*
       parse-itunes-library-file
       parse-itl))
+
+(def ^:dynamic *songs'*
+  (songs (parse)))
 
 (defn -main
   "I don't do a whole lot ... yet."
