@@ -2,7 +2,9 @@
   (:gen-class)
   (:require [clojure.xml :as xml]
             [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [ring.util.codec :refer [percent-decode]]
+            [audial.control :as ctrl]))
 
 (def ^:dynamic *itunes-file*
   "/Users/ben/Music/iTunes/iTunes Library.xml")
@@ -67,14 +69,35 @@
 (defn get-artist [catalog artist]
   (filter #{artist} (:tracks catalog)))
 
+(defn get-file [song]
+  (-> (:location song)
+      percent-decode
+      (str/replace #"^file:/*" "/")))
+
+(defn available? [song]
+  (-> (get-file song)
+      io/as-file
+      .exists))
+
 (defn search [songs q]
   (let [match? (-> (str "(?i)" q)  ; case-insensitive
                    re-pattern
-                   (partial re-find)
+                   (#(partial re-find %))
                    (fnil ""))
         fields (juxt :name :artist :album-artist :album)
         song-match? #(some match? (fields %))]
     (filter song-match? songs)))
+
+(defn play-q [songs q]
+  (let [results (search songs q)]
+    (cond
+      (empty? results)
+      :no-results
+
+      (empty? (rest results))
+      (ctrl/play-song (first results))
+
+      :else results)))
 
 (defn parse []
   (-> *itunes-file*

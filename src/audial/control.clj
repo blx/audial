@@ -1,6 +1,6 @@
 (ns audial.control
   (:require [clojure.java.shell :refer [sh]]
-            [ring.util.codec :refer [percent-decode]]))
+            [audial.core :refer [get-file]]))
 
 (def applescript
   (partial sh "osascript" "-e"))
@@ -14,8 +14,7 @@
 (defn play-path [path]
   (tell-itunes (format "play (POSIX file \"%s\")" path)))
 
-(defn play-song
-  (-> song
-      :location
-      percent-decode
-      play-path))
+(defn play-song [song]
+  (let [path (get-file song)]
+    (println "Attempting to play song at location " path)
+    (play-path path)))
