@@ -69,14 +69,19 @@
   (filter #{artist} (:tracks catalog)))
 
 (defn search [songs q]
-  (let [qs (str/split q #"\s+")
-        match? (->> (str/join " " (map #(str "(?i)" %) qs))
-                    re-pattern
-                    (partial re-find)
-                    (#(fnil % "")))
-        fields (juxt :name :artist :album-artist :album)
-        song-match? #(some match? (fields %))]
-    (filter song-match? songs)))
+  (if (empty? q)
+    songs
+    (let [qs (str/split q #"\s+")
+          match? (->> (map (partial format "(?=.*%s)") qs)
+                      (apply str)
+                      (format "(?i)%s.*")
+                      re-pattern
+                      (partial re-find))
+          fields (juxt :name :artist :album-artist :album)
+          song-match? #(->> (fields %)
+                            (apply str)
+                            match?)]
+      (filter song-match? songs))))
 
 (defn play-q [songs q]
   (let [results (search songs q)]
@@ -98,7 +103,7 @@
       parse-itunes-library-file
       parse-itl))
 
-(def ^:dynamic *songs'*
+(def ^:dynamic *songs*
   (songs (parse)))
 
 (defn -main
