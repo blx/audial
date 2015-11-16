@@ -20,14 +20,22 @@
   (comp empty? rest))
 
 (defn parse-plist-seq
-  "plist xml consists of pairs of tags, eg. <key>k</key><integer>5</integer>"
+  "plist xml consists of pairs of consecutive tags,
+  eg. <key>k</key><integer>5</integer>"
   [xml]
-  (let [tagpair->tag (fn [[{[k] :content}
+                     ; (defalias XMLTag (HMap :required
+                     ;                        {:tag Kw :attrs (Option Vec)
+                     ;                         :content (Option (Vec (U String XMLTag)))}))
+                     ; (defalias Tag (Map Kw (U nil String Tag)))
+                     ; tagpair->tag is [XMLTag XMLTag] -> Tag
+  (let [tagpair->tag (fn tagpair->tag [[{[k] :content tag :tag}
                            {[& vs] :content}]]
                        (let [k (plist-key->keyword k)
                              v (if (solitary? vs)
                                  (first vs)
-                                 (parse-plist-seq vs))]
+                                 (if (= tag :array)
+                                   (map tagpair->tag [nil vs])  ; arrays don't have key-value consecutive tags
+                                   (parse-plist-seq vs)))]
                          {k v}))]
     (->> xml
          (partition 2)
@@ -50,7 +58,23 @@
     #"iTunes LP" :itunes-lp
     :unknown))
 
-(def audio-track? (comp #(= :audio %) kind))
+(defn audio-track? [track]
+  (= :audio (kind track)))
+
+(defn songs [catalog]
+  (filter audio-track? (:tracks catalog)))
+
+(defn get-artist [catalog artist]
+  (filter #{artist} (:tracks catalog)))
+
+(defn search [songs q]
+  (let [match? (-> (str "(?i)" q)  ; case-insensitive
+                   re-pattern
+                   (partial re-find)
+                   (fnil ""))
+        fields (juxt :name :artist :album-artist :album)
+        song-match? #(some match? (fields %))]
+    (filter song-match? songs)))
 
 (defn parse []
   (-> *itunes-file*
