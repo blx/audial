@@ -6,7 +6,7 @@
             [environ.core :refer [env]]
             [clojure.java.jdbc :as j]
             [tesser.core :as t]
-            [audial.util :refer [solitary? ->keyword rfilterv]]
+            [audial.util :refer [solitary? ->keyword pfilterv]]
             [audial.control :as ctrl]))
 
 (def parse-itunes-library-file
@@ -27,9 +27,17 @@
            (map #(vector % :text)
                 [:name :artist :album-artist :album :location]))))
 
+(defn create! []
+  (j/db-do-commands
+    itunes-db
+    (str "create virtual table tracks using fts4(")))
+
 (defn itunes-db-insert! [song]
   (->> (select-keys song itunes-db-fields)
        (j/insert! itunes-db :itunes-tracks)))
+
+(defn query-itunes-db [q] nil)
+
 
 (defn parse-plist-seq
   "plist xml consists of pairs of consecutive tags,
@@ -97,7 +105,7 @@
   (if (empty? q)
     songs
     (let [song-matches? (song-matcher q)]
-      (->> (rfilterv song-matches? songs)
+      (->> (pfilterv song-matches? songs)
            (sort-by #(-> (or (:play-count %) "0")
                          Integer/parseInt)
                     >)))))
