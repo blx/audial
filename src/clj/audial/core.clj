@@ -4,34 +4,45 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [environ.core :refer [env]]
-            [clojure.core.reducers :as r]
+            [clojure.java.jdbc :as j]
             [tesser.core :as t]
+            [audial.util :refer [solitary? ->keyword rfilterv]]
             [audial.control :as ctrl]))
 
 (def parse-itunes-library-file
   (comp :content first :content xml/parse io/input-stream))
 
-(defn- str->keyword [s]
-  (-> s
-      str/lower-case
-      (str/replace " " "-")
-      keyword))
+(def itunes-db
+  {:subprotocol "sqlite"
+   :classname "org.sqlite.JDBC"
+   :subname "db.sqlite3"})
 
-(def solitary?
-  (comp empty? rest))
+(def itunes-db-fields
+  [:name :artist :album-artist :album :location])
+
+(defn create-itunes-table! []
+  (j/db-do-commands
+    itunes-db
+    (apply j/create-table-ddl :itunes-tracks
+           (map #(vector % :text)
+                [:name :artist :album-artist :album :location]))))
+
+(defn itunes-db-insert! [song]
+  (->> (select-keys song itunes-db-fields)
+       (j/insert! itunes-db :itunes-tracks)))
 
 (defn parse-plist-seq
   "plist xml consists of pairs of consecutive tags,
   eg. <key>k</key><integer>5</integer>"
   [xml]
-                     ; (defalias XMLTag (HMap :required
-                     ;                        {:tag Kw :attrs (Option Vec)
-                     ;                         :content (Option (Vec (U String XMLTag)))}))
-                     ; (defalias Tag (Map Kw (U nil String Tag)))
-                     ; tagpair->tag is [XMLTag XMLTag] -> Tag
+  ; (defalias XMLTag (HMap :required
+  ;                        {:tag Kw :attrs (Option Vec)
+  ;                         :content (Option (Vec (U String XMLTag)))}))
+  ; (defalias Tag (Map Kw (U nil String Tag)))
+  ; tagpair->tag is [XMLTag XMLTag] -> Tag
   (let [tagpair->tag (fn tagpair->tag [[{[k] :content tag :tag}
-                           {[& vs] :content}]]
-                       (let [k (str->keyword k)
+                                        {[& vs] :content}]]
+                       (let [k (->keyword k)
                              v (if (solitary? vs)
                                  (first vs)
                                  (if (= tag :array)
@@ -70,11 +81,6 @@
 (defn get-artist [catalog artist]
   (filter #{artist} (:tracks catalog)))
 
-(defn rfilter [pred coll]
-  (->> coll
-       (r/filter pred)
-       (into [])))
-
 (defn song-matcher [q]
   (let [qs (str/split q #"\s+")
         match? (->> (map (partial format "(?=.*%s)") qs)
@@ -91,79 +97,10 @@
   (if (empty? q)
     songs
     (let [song-matches? (song-matcher q)]
-      (->> (rfilter song-matches? songs)
+      (->> (rfilterv song-matches? songs)
            (sort-by #(-> (or (:play-count %) "0")
                          Integer/parseInt)
                     >)))))
-;      (->> (t/filter song-match?)
-           ;(t/map (juxt (fnil :play-count 0) identity))
-           ;(t/fold {:reducer (fn [acc in]
-           ;                    (
-           ;         :reducer (comp second (partial sort-by first >))
-           ;         :combiner +})
-;           (t/into [])
-;           (t/tesser (partition 256 songs))))))
-
-
-
-(defn pfilter [pred coll]
-  (let [v (vec coll)
-        len (count v)
-        chunk-size 2048]
-    (when-not (zero? len)
-      (if (< len (* 4 chunk-size))
-        (do (println "Dispatching to clojure.core/filter")
-            (clojure.core/filter pred coll))
-        (let [n-full-chunks (/ len chunk-size)
-              remainder-size (mod len chunk-size)
-              partition-bounds (->> (range 0 len chunk-size)
-                                    (partition 2 1)
-                                    (#(if-not (zero? remainder-size)
-                                        (concat % [[(- len remainder-size) len]])
-                                        %)))]
-          (println "ok")
-          (->> (mapv (fn [[start end]] (subvec v start end))
-                    partition-bounds)
-               (pmap (partial filter pred))
-               (r/reduce 
-               (flatten))))))))
-;               ((fn [filtered-partitions]
-;                  (let [n-partitions (count filtered-partitions)]
-;                    (loop [i 0 v (transient [])]
-;                      (if (< i n-partitions)
-;                        (recur (inc i) (reduce conj! v (nth filtered-partitions i)))
-;                        (persistent! v))))))))))))
-;  )
-               ;(apply conj)))))))
-
-
-(defn -search [songs q]
-  (if (empty? q)
-    songs
-    (let [qs (str/split q #"\s+")
-          match? (->> (map (partial format "(?=.*%s)") qs)
-                      (apply str)
-                      (format "(?i)%s.*")
-                      re-pattern
-                      (partial re-find))
-          fields (juxt :name :artist :album-artist :album)
-          song-match? #(->> (fields %)
-                            (apply str)
-                            match?)]
-      (filter song-match? songs))))
-
-(defn matches'? [q]
-  (let [qs (str/split q #"\s+")
-        match? (->> (map (partial format "(?=.*%s)") qs)
-                    (apply str)
-                    (format "(?i)%s.*")
-                    re-pattern
-                    (partial re-find))
-        fields (juxt :name :artist :album-artist :album)]
-    #(->> (fields %)
-          (apply str)
-          match?)))
-
 
 (defn play-q [songs q]
   (let [results (search songs q)]

@@ -51,6 +51,7 @@
 
 (def css (apply str
                 "#q {width:400px; font-size:2em; padding:0.3em;}"
+                "li {line-height:1.2em;}"
                 "span {padding-left:.5em;}"
                 "li span:first-of-type {font-weight:bold;}"
                 "span:before {content: \" / \"; padding-right:.5em; color:#ccc;}"))
