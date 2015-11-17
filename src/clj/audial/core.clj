@@ -6,7 +6,7 @@
             [environ.core :refer [env]]
             [clojure.java.jdbc :as j]
             [tesser.core :as t]
-            [audial.util :refer [solitary? ->keyword pfilterv]]
+            [audial.util :refer [solitary? ->keyword pfilterv rename-keys*]]
             [audial.control :as ctrl]))
 
 (def parse-itunes-library-file
@@ -20,21 +20,29 @@
 (def itunes-db-fields
   [:name :artist :album-artist :album :location])
 
-(defn create-itunes-table! []
-  (j/db-do-commands
-    itunes-db
-    (apply j/create-table-ddl :itunes-tracks
-           (map #(vector % :text)
-                [:name :artist :album-artist :album :location]))))
+(defn kw->db-field [kw]
+  (-> (name kw)
+      str
+      (str/replace "-" "_")))
 
-(defn create! []
+(defn itunes-db-create! []
   (j/db-do-commands
     itunes-db
-    (str "create virtual table tracks using fts4(")))
+    (format "create virtual table tracks using fts4(%s)"
+            (->> itunes-db-fields
+                 (map kw->db-field)
+                 (str/join ", ")))))
 
 (defn itunes-db-insert! [song]
-  (->> (select-keys song itunes-db-fields)
-       (j/insert! itunes-db :itunes-tracks)))
+  (j/insert!
+    itunes-db :tracks
+    (-> song
+        (select-keys itunes-db-fields)
+        (rename-keys* kw->db-field))))
+
+(defn populate-itunes-db! [songs]
+  (doseq [song songs]
+    (itunes-db-insert! song)))
 
 (defn query-itunes-db [q] nil)
 

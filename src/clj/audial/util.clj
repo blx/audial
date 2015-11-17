@@ -24,3 +24,6 @@
        (r/filter pred)
        (into [])))
 
+(defn rename-keys* [m f]
+  (zipmap (map f (keys m))
+          (vals m)))
