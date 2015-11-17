@@ -17,10 +17,7 @@ That's a good word.
 
 ## Installation
 
-Installation instructions are a #TODO, sorry. I mean, do I *look* like
-a guy who's savvy with the JVM deployment scene?
-
-Just tell Leiningen to do things.
+Installation instructions are a #TODO, sorry. I just ask Leiningen to do things.
 
 Note that I've been developing on fairly recent versions of OS X and iTunes, so
 older versions may be wonky.
