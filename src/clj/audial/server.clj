@@ -6,6 +6,7 @@
             [ring.util.codec :as codec]
             [compojure.core :refer [defroutes GET POST]]
             [compojure.route :as route]
+            [clojure.string :as str]
             [hiccup.core :refer [html]]
             [audial.core :as audial]
             [audial.control :refer [get-file]]))
@@ -15,8 +16,12 @@
 (def url-decode
   (fnil codec/url-decode ""))
 
+(def file-prefix
+  "/Users/ben/Music/iTunes/iTunes Media/")
+
 (defn url-for [song]
   (->> (get-file song)
+       (#(str/replace % file-prefix ""))
        url-encode
        (str "/play/")))
 
@@ -60,8 +65,9 @@
           (str result)
           (render-results result)))))
 
+
 (defn play [path]
-  (let [result (audial.control/play-file (url-decode path))]
+  (let [result (audial.control/play-file (str file-prefix (url-decode path)))]
     (println result)
     (if (zero? (:exit result))
       [:p "Playing"]

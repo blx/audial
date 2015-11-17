@@ -14,6 +14,7 @@
                  [ring/ring-json "0.4.0"]
                  [hiccup "1.0.5"]
                  [compojure "1.4.0"]
+                 [tesser.core "1.0.1"]
                  
                  [org.clojure/clojurescript "1.7.170"]
                  [reagent "0.5.1"]]
