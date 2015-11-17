@@ -3,12 +3,10 @@
   (:require [clojure.xml :as xml]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [environ.core :refer [env]]
             [clojure.core.reducers :as r]
             [tesser.core :as t]
             [audial.control :as ctrl]))
-
-(def ^:dynamic *itunes-file*
-  "/Users/ben/Music/iTunes/iTunes Library.xml")
 
 (def parse-itunes-library-file
   (comp :content first :content xml/parse io/input-stream))
@@ -77,20 +75,23 @@
        (r/filter pred)
        (into [])))
 
+(defn song-matcher [q]
+  (let [qs (str/split q #"\s+")
+        match? (->> (map (partial format "(?=.*%s)") qs)
+                    (apply str)
+                    (format "(?i)%s.*")
+                    re-pattern
+                    (partial re-find))
+        fields (juxt :name :artist :album-artist :album)]
+    #(->> (fields %)
+          (apply str)
+          match?)))
+
 (defn search [songs q]
   (if (empty? q)
     songs
-    (let [qs (str/split q #"\s+")
-          match? (->> (map (partial format "(?=.*%s)") qs)
-                      (apply str)
-                      (format "(?i)%s.*")
-                      re-pattern
-                      (partial re-find))
-          fields (juxt :name :artist :album-artist :album)
-          song-match? #(->> (fields %)
-                            (apply str)
-                            match?)]
-      (->> (rfilter song-match? songs)
+    (let [song-matches? (song-matcher q)]
+      (->> (rfilter song-matches? songs)
            (sort-by #(-> (or (:play-count %) "0")
                          Integer/parseInt)
                     >)))))
@@ -134,23 +135,6 @@
 ;                        (persistent! v))))))))))))
 ;  )
                ;(apply conj)))))))
-
-(defn filter' [pred coll]
-  (lazy-seq
-    (when-let [s (seq coll)]
-      (if (chunked-seq? s)
-        (let [c (chunk-first s)
-              size (count c)
-              b (chunk-buffer size)]
-          (dotimes [i size]
-            (let [v (.nth c i)]
-              (when (pred v)
-                (chunk-append b v))))
-          (chunk-cons (chunk b) (filter pred (chunk-rest s))))
-        (let [f (first s) r (rest s)]
-          (if (pred f)
-            (cons f (filter pred r))
-            (filter pred r)))))))
 
 
 (defn -search [songs q]
@@ -197,7 +181,7 @@
       :else results)))
 
 (defn parse []
-  (-> *itunes-file*
+  (-> (env :itunes-file)
       parse-itunes-library-file
       parse-itl))
 

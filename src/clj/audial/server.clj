@@ -6,6 +6,7 @@
             [ring.util.codec :as codec]
             [compojure.core :refer [defroutes GET POST]]
             [compojure.route :as route]
+            [environ.core :refer [env]]
             [clojure.string :as str]
             [hiccup.core :refer [html]]
             [audial.core :as audial]
@@ -17,7 +18,7 @@
   (fnil codec/url-decode ""))
 
 (def file-prefix
-  "/Users/ben/Music/iTunes/iTunes Media/")
+  (env :file-prefix))
 
 (defn url-for [song]
   (->> (get-file song)
@@ -34,7 +35,8 @@
    [:a {:href (url-for song)
         :tabindex 0}
     (:name song)]
-   (str " by " (:artist song))])
+   [:span (:artist song)]
+   [:span (:album song)]])
 
 (defn render-results [results]
   [:ul
@@ -47,7 +49,11 @@
               :name "q"
               :autofocus true}]])
 
-(def css "#q {width:400px; font-size:2em; padding:0.3em;}")
+(def css (apply str
+                "#q {width:400px; font-size:2em; padding:0.3em;}"
+                "span {padding-left:.5em;}"
+                "li span:first-of-type {font-weight:bold;}"
+                "span:before {content: \" / \"; padding-right:.5em; color:#ccc;}"))
 
 (defn render-page [content]
   (html

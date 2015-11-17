@@ -12,6 +12,7 @@
                  [ring/ring-defaults "0.1.5"]
                  [ring/ring-codec "1.0.0"]
                  [ring/ring-json "0.4.0"]
+                 [environ "1.0.1"]
                  [hiccup "1.0.5"]
                  [compojure "1.4.0"]
                  [tesser.core "1.0.1"]
@@ -20,6 +21,7 @@
                  [reagent "0.5.1"]]
   
   :plugins [[lein-ring "0.9.7"]
+            [lein-environ "1.0.1"]
             [lein-cljsbuild "1.1.1"]]
 
   :hooks [leiningen.cljsbuild]
@@ -34,11 +36,12 @@
   :profiles {:uberjar {:aot :all
                        :cljsbuild
                        {:builds {:prod {:compiler {:output-to "resources/public/js/audial.js"
-                                                        :optimizations :advanced
-                                                        :pretty-print false}}}}}
-             :dev {:cljsbuild
-                   {:builds {:dev {:compiler {:output-to "resources/public/js/audial-dev.js"
-                                              :output-dir "resources/public/js"
-                                              :asset-path "js"
-                                              :main "audial.frontend"
-                                              :optimizations :none}}}}}})
+                                                   :optimizations :advanced
+                                                   :pretty-print false}}}}}
+             :dev [:local-dev
+                   {:cljsbuild
+                    {:builds {:dev {:compiler {:output-to "resources/public/js/audial-dev.js"
+                                               :output-dir "resources/public/js"
+                                               :asset-path "js"
+                                               :main "audial.frontend"
+                                               :optimizations :none}}}}}]})
