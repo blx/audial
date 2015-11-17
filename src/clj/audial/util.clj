@@ -24,6 +24,8 @@
        (r/filter pred)
        (into [])))
 
-(defn rename-keys* [m f]
+(defn rename-keys*
+  "Returns the map with each key renamed to the result of (f key)."
+  [m f]
   (zipmap (map f (keys m))
           (vals m)))
