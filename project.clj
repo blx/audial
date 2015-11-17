@@ -17,10 +17,11 @@
                  [org.xerial/sqlite-jdbc "3.8.11.2"]
                  [hiccup "1.0.5"]
                  [compojure "1.4.0"]
-                 [tesser.core "1.0.1"]
+                 ;[tesser.core "1.0.1"]
                  [clj-spotify "0.1.1"]
                  [clj-http "2.0.0"]
                  [cheshire "5.5.0"]
+                 [bdesham/clj-plist "0.9.1"]
                  
                  [org.clojure/clojurescript "1.7.170"]
                  [reagent "0.5.1"]]

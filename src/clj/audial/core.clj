@@ -5,7 +5,6 @@
             [clojure.string :as str]
             [environ.core :refer [env]]
             [clojure.java.jdbc :as j]
-            [tesser.core :as t]
             [audial.util :refer [solitary? ->keyword pfilterv rename-keys*]]
             [audial.control :as ctrl]))
 
@@ -112,11 +111,10 @@
 (defn search [songs q]
   (if (empty? q)
     songs
-    (let [song-matches? (song-matcher q)]
-      (->> (pfilterv song-matches? songs)
-           (sort-by #(-> (or (:play-count %) "0")
-                         Integer/parseInt)
-                    >)))))
+    (->> (pfilterv (song-matcher q) songs)
+         (sort-by #(-> (or (:play-count %) "0")
+                       Integer/parseInt)
+                  >))))
 
 (defn play-q [songs q]
   (let [results (search songs q)]
