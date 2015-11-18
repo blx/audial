@@ -11,6 +11,11 @@
       (str/replace " " "-")
       keyword))
 
+(defn dekeywordize [kw]
+  ; for sqlite db fields
+  (-> (name kw)
+      (str/replace "-" "_")))
+
 (defn pfilterv
   "Uses clojure.core.reducers for better performance on big colls or intensive preds.
   Gently avoid using on small colls as clojure.core/filter tends to be faster

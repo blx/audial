@@ -17,7 +17,10 @@
    :subname "db.sqlite3"})
 
 (def itunes-db-fields
-  [:name :artist :album-artist :album :location])
+  [:name :artist :album-artist :album :location :play-count])
+
+(def search-fields
+  [:name :artist :album-artist :album])
 
 (defn kw->db-field [kw]
   (-> (name kw)
@@ -43,7 +46,19 @@
   (doseq [song songs]
     (itunes-db-insert! song)))
 
-(defn query-itunes-db [q] nil)
+(defn echo [s] (println s) s)
+
+(defn query-itunes-db [q]
+  (let [q' (->> (str/split q #"\s+")
+                (map #(format "*%s*" %))
+                (str/join " OR "))]
+    (j/query itunes-db
+             (echo
+               ["select * from tracks where tracks match ? order by play_count desc"
+                (->> search-fields
+                     (map audial.util/dekeywordize)
+                     (map #(format "(%s:'*%s*')" % q'))
+                     (str/join " OR "))]))))
 
 
 (defn parse-plist-seq
@@ -89,9 +104,10 @@
   (= :audio (kind track)))
 
 (defn songs [catalog]
-  (->> (:tracks catalog)
-       (filter audio-track?)
-       vec))
+  (let [str->int (fnil #(Integer/parseInt %) "0")]
+    (->> (:tracks catalog)
+         (filterv (every-pred audio-track? :location))
+         (mapv #(update % :play-count str->int)))))
 
 (defn get-artist [catalog artist]
   (filter #{artist} (:tracks catalog)))
@@ -102,22 +118,22 @@
                     (apply str)
                     (format "(?i)%s.*")
                     re-pattern
-                    (partial re-find))
-        fields (juxt :name :artist :album-artist :album)]
-    #(->> (fields %)
-          (apply str)
-          match?)))
+                    (partial re-find))]
+    (fn [song]
+      (->> song
+           (map search-fields)
+           (apply str)
+           match?))))
 
 (defn search [songs q]
   (if (empty? q)
     songs
     (->> (pfilterv (song-matcher q) songs)
-         (sort-by #(-> (or (:play-count %) "0")
-                       Integer/parseInt)
-                  >))))
+         (sort-by :play-count >))))
 
 (defn play-q [songs q]
-  (let [results (search songs q)]
+  (let [results ;(search songs q)]
+        (query-itunes-db q)]
     (cond
       (empty? results)
       :no-results
