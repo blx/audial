@@ -21,7 +21,7 @@
                  [clj-spotify "0.1.1"]
                  [clj-http "2.0.0"]
                  [cheshire "5.5.0"]
-                 [bdesham/clj-plist "0.9.1"]
+                 [bdesham/clj-plist "0.9.1" :exclusions [joda-time]]
                  
                  [org.clojure/clojurescript "1.7.170"]
                  [reagent "0.5.1"]]
