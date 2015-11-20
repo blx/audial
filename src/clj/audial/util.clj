@@ -5,14 +5,13 @@
 (def solitary?
   (comp empty? rest))
 
-(defn ->keyword [s]
+(defn keywordize [s]
   (-> (str s)
       str/lower-case
       (str/replace " " "-")
       keyword))
 
 (defn dekeywordize [kw]
-  ; for sqlite db fields
   (-> (name kw)
       (str/replace "-" "_")))
 

@@ -1,15 +1,12 @@
 (ns audial.core
   (:gen-class)
-  (:require [clojure.xml :as xml]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [environ.core :refer [env]]
+            [com.github.bdesham.clj-plist :as plist]
             [clojure.java.jdbc :as j]
-            [audial.util :refer [solitary? ->keyword pfilterv rename-keys*]]
+            [audial.util :refer [solitary? keywordize dekeywordize pfilterv rename-keys*]]
             [audial.control :as ctrl]))
-
-(def parse-itunes-library-file
-  (comp :content first :content xml/parse io/input-stream))
 
 (def itunes-db
   {:subprotocol "sqlite"
@@ -22,17 +19,12 @@
 (def search-fields
   [:name :artist :album-artist :album])
 
-(defn kw->db-field [kw]
-  (-> (name kw)
-      str
-      (str/replace "-" "_")))
-
 (defn itunes-db-create! []
   (j/db-do-commands
     itunes-db
     (format "create virtual table tracks using fts4(%s)"
             (->> itunes-db-fields
-                 (map kw->db-field)
+                 (map dekeywordize)
                  (str/join ", ")))))
 
 (defn itunes-db-insert! [song]
@@ -40,7 +32,7 @@
     itunes-db :tracks
     (-> song
         (select-keys itunes-db-fields)
-        (rename-keys* kw->db-field))))
+        (rename-keys* keywordize))))
 
 (defn populate-itunes-db! [songs]
   (doseq [song songs]
@@ -49,50 +41,21 @@
 (defn echo [s] (println s) s)
 
 (defn query-itunes-db [q]
-  (let [q' (->> (str/split q #"\s+")
-                (map #(format "*%s*" %))
-                (str/join " OR "))]
-    (j/query itunes-db
-             (echo
-               ["select * from tracks where tracks match ? order by play_count desc"
-                (->> search-fields
-                     (map audial.util/dekeywordize)
-                     (map #(format "(%s:'*%s*')" % q'))
-                     (str/join " OR "))]))))
-
-
-(defn parse-plist-seq
-  "plist xml consists of pairs of consecutive tags,
-  eg. <key>k</key><integer>5</integer>"
-  [xml]
-  ; (defalias XMLTag (HMap :required
-  ;                        {:tag Kw :attrs (Option Vec)
-  ;                         :content (Option (Vec (U String XMLTag)))}))
-  ; (defalias Tag (Map Kw (U nil String Tag)))
-  ; tagpair->tag is [XMLTag XMLTag] -> Tag
-  (let [tagpair->tag (fn tagpair->tag [[{[k] :content tag :tag}
-                                        {[& vs] :content}]]
-                       (let [k (->keyword k)
-                             v (if (solitary? vs)
-                                 (first vs)
-                                 (if (= tag :array)
-                                   (map tagpair->tag [nil vs])  ; arrays don't have key-value consecutive tags
-                                   (parse-plist-seq vs)))]
-                         {k v}))]
-    (->> xml
-         (partition 2)
-         (map tagpair->tag)
-         (reduce merge {}))))
-
-(defn parse-itl [xml]
-  (-> xml
-      parse-plist-seq
-      (update :tracks vals)
-      ; TODO playlists are wonky
-      (update :playlists vals)))
+  (if (str/blank? q)
+    (j/query itunes-db "select * from tracks order by play_count desc")
+    (let [q' (->> (str/split q #"\s+")
+                  (map #(str % "*"))
+                  (str/join " OR "))]
+      (j/query itunes-db
+               (echo
+                 ["select * from tracks where tracks match ? order by play_count desc"
+                  (->> search-fields
+                       (map dekeywordize)
+                       (map #(format "(%s:'%s')" % q'))
+                       (str/join " OR "))])))))
 
 (defn kind [track]
-  (condp re-find (:kind track)
+  (condp re-find (or (:kind track) "")
     #"audio" :audio
     #"video" :video
     #"app$" :app
@@ -104,10 +67,8 @@
   (= :audio (kind track)))
 
 (defn songs [catalog]
-  (let [str->int (fnil #(Integer/parseInt %) "0")]
-    (->> (:tracks catalog)
-         (filterv (every-pred audio-track? :location))
-         (mapv #(update % :play-count str->int)))))
+  (->> (:tracks catalog)
+       (filterv (every-pred audio-track? :location))))
 
 (defn get-artist [catalog artist]
   (filter #{artist} (:tracks catalog)))
@@ -121,12 +82,12 @@
                     (partial re-find))]
     (fn [song]
       (->> song
-           (map search-fields)
+           ((apply juxt search-fields))
            (apply str)
            match?))))
 
 (defn search [songs q]
-  (if (empty? q)
+  (if (str/blank? q)
     songs
     (->> (pfilterv (song-matcher q) songs)
          (sort-by :play-count >))))
@@ -147,10 +108,25 @@
 
       :else results)))
 
+(defn play-q' [songs q]
+  (let [results (search songs q)]
+    (cond
+      (empty? results)
+      :no-results
+
+      (solitary? results)
+      (let [song (first results)]
+        (if (ctrl/available? song)
+          (do (ctrl/play-song song)
+              :success)
+          :unavailable))
+
+      :else results)))
+
 (defn parse []
   (-> (env :itunes-file)
-      parse-itunes-library-file
-      parse-itl))
+      (plist/parse-plist {:keyword-fn keywordize})
+      (update :tracks vals)))
 
 (def ^:dynamic *songs*
   (songs (parse)))

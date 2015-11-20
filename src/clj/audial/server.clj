@@ -66,8 +66,8 @@
       (render-search)
       content]]))
 
-(defn search [q]
-  (let [result (audial/play-q audial/*songs* q)]
+(defn search [q & [in-mem?]]
+  (let [result ((if in-mem? audial/play-q' audial/play-q) audial/*songs* q)]
     (-> (if (keyword? result)
           (str result)
           (render-results result)))))
@@ -107,6 +107,7 @@
 (defroutes app-routes
   (GET "/cljs" [] (cljs-page))
   (GET "/search" [q] (render (search q)))
+  (GET "/search-mem" [q] (render (search q true)))
   (GET "/play/:path" [path] (render (play path)))
   (GET "/api/songs" [] (response (map simplify-song audial/*songs*)))
   (GET "/api/search" [q] (response (map simplify-song (audial/search audial/*songs* q))))
