@@ -9,3 +9,9 @@ pom.xml.asc
 /.nrepl-port
 
 profiles.clj
+
+/node_modules
+*.log
+electron
+resources/main.js
+resources/public/js/
