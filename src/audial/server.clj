@@ -29,60 +29,71 @@
 (defn simplify-song [song]
   (-> (select-keys song [:name :artist :album-artist :album :year :track-number])
       (assoc :url (url-for song))))
-          
-(defn render-song [song]
+
+(defn highlight-matches [q s]
+  (if (str/blank? q)
+    s
+    (let [pattern (->> q (format "(?i)(%s)") re-pattern)]
+      (str/replace s pattern (str "<span class='selected'>$1</span>")))))
+
+(defn $song [{:keys [name artist album] :as song}]
   [:li
    [:a {:href (url-for song)
         :tabindex 0}
-    (:name song)]
-   [:span (:artist song)]
-   [:span (:album song)]])
+    name]
+   [:span.field artist]
+   [:span.field album]])
 
-(defn render-results [results]
+(defn $results [results]
   [:ul
-   (map render-song results)])
+   (map $song results)])
 
-(defn render-search []
+(defn $search []
   [:form {:action "/search"
           :method "get"}
    [:input#q {:type "text"
               :name "q"
               :autofocus true}]])
 
-(def css (apply str
-                "#q {width:400px; font-size:2em; padding:0.3em;}"
-                "li {line-height:1.2em;}"
-                "span {padding-left:.5em;}"
-                "li span:first-of-type {font-weight:bold;}"
-                "span:before {content: \" / \"; padding-right:.5em; color:#ccc;}"))
+(def css
+  (str
+    "body {background-color:#fafafa; font-family:Helvetica Neue,Helvetica; padding:8px 8px;}"
+    "#q {width:400px; font-size:2em; padding:0.3em;}"
+    "ul {list-style:none; padding-left:.7em;}"
+    "li {line-height:1.5em;}"
+    ".field {padding-left:.5em;}"
+    "li span:first-of-type {font-weight:bold;}"
+    ".field:before {content: \" / \"; padding-right:.5em; color:#ccc;}"
+    ".selected {background-color:#ccffcc;}"))
 
-(defn render-page [content]
+(defn $page [content]
   (html
     [:html
      [:head
       [:title "audial"]
       [:style css]]
      [:body
-      (render-search)
+      ($search)
       content]]))
 
 (defn search [q & [in-mem?]]
   (let [result ((if in-mem? audial/play-q' audial/play-q) audial/*songs* q)]
     (-> (if (keyword? result)
           (str result)
-          (render-results result)))))
+          (->> ($results result)
+               html
+               (highlight-matches q))))))
 
 
 (defn play [path]
   (let [result (audial.control/play-file (str file-prefix (url-decode path)))]
-    (println result)
     (if (zero? (:exit result))
       [:p "Playing"]
       [:p (str "Error: " result)])))
 
 (defn render [content]
   (-> content
-      render-page))
+      $page))
 
 
 (defn cljs-page []
