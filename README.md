@@ -38,6 +38,7 @@ environment variables are defined (keep your spotify credentials out of git):
 
     gem install foreman
     npm install electron-prebuilt
+    ln -s node_modules/electron-prebuilt/dist/Electron.app/Contents/MacOS/Electron electron
     
     foreman start &
     ./electron .
