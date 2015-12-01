@@ -8,7 +8,7 @@
 (defn keywordize [s]
   (-> (str s)
       str/lower-case
-      (str/replace " " "-")
+      (str/replace #"\s+" "-")
       keyword))
 
 (defn dekeywordize [kw]
