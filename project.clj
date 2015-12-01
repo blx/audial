@@ -31,7 +31,7 @@
             [lein-environ "1.0.1"]
             [lein-cljsbuild "1.1.1" :exclusions [org.clojure/clojure]]]
 
-  :hooks [leiningen.cljsbuild]
+;  :hooks [leiningen.cljsbuild]
 
   :ring {:handler audial.server/site
          :port 8080}
