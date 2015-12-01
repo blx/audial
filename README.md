@@ -34,11 +34,13 @@ environment variables are defined (keep your spotify credentials out of git):
 
 ## Usage
 
-    lein ring server-headless
+**Electron frontend**
 
-and elsewhere, if using the clojurescript frontend:
-
-    lein cljsbuild auto dev
+    gem install foreman
+    npm install electron-prebuilt
+    
+    foreman start &
+    ./electron .
 
 
 ## License
