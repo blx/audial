@@ -4,7 +4,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :source-paths ["src/clj"]
+  ;:source-paths ["src/clj"]
+  :source-paths ["src"]
 
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [ring/ring-core "1.4.0"]
@@ -25,10 +26,12 @@
                  [com.github.bdesham/clj-plist "0.10.0" :exclusions [joda-time]]
                  
                  [org.clojure/clojurescript "1.7.170"]
+                 [figwheel "0.5.0-2"]
                  [reagent "0.5.1"]]
   
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.0.1"]
+            [lein-figwheel "0.5.0-2"]
             [lein-cljsbuild "1.1.1" :exclusions [org.clojure/clojure]]]
 
 ;  :hooks [leiningen.cljsbuild]
@@ -37,6 +40,11 @@
          :port 8080}
 
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs"]}}}
+
+  :clean-targets ^{:protect false} ["resources/main.js"
+                                    "resources/public/js/ui-core.js"
+                                    "resources/public/js/ui-core.js.map"
+                                    "resources/public/js/ui-out"]
 
   :main ^:skip-aot audial.core
   :target-path "target/%s"
@@ -47,8 +55,37 @@
                                                    :pretty-print false}}}}}
              :dev [:local-dev
                    {:cljsbuild
-                    {:builds {:dev {:compiler {:output-to "resources/public/js/audial-dev.js"
-                                               :output-dir "resources/public/js"
-                                               :asset-path "js"
-                                               :main "audial.frontend"
-                                               :optimizations :none}}}}}]})
+                    {:builds
+                     {:electron-dev {:source-paths ["electron_src"]
+                                     :compiler {:output-to "resources/main.js"
+                                                :optimizations :simple
+                                                :pretty-print true
+                                                :cache-analysis true}}
+                      :frontend-dev {:source-paths ["ui_src" "dev_src"]
+                                     :compiler {:output-to "resources/public/js/ui-core.js"
+                                                :output-dir "resources/public/js/ui-out"
+                                                :source-map "resources/public/js/ui-core.js.map"
+                                                :asset-path "js/ui-out"
+                                                :optimizations :none
+                                                :cache-analysis true
+                                                :main "dev.core"}}
+                      :electron-release {:source-paths ["electron_src"]
+                                         :compiler {:output-to "resources/main.js"
+                                                    :optimizations :simple
+                                                    :pretty-print true
+                                                    :cache-analysis true}}
+                      :frontend-relase {:source-paths ["ui_src"]
+                                        :compiler {:output-to "resources/public/js/ui-core.js"
+                                                   :output-dir "resources/public/js/ui-release-out"
+                                                   :source-map "resources/public/js/ui-core.js.map"
+                                                   :optimizations :simple
+                                                   :main "ui.core"}}}}}]})
+
+
+(comment
+                     {:dev {:compiler {:output-to "resources/public/js/audial-dev.js"
+                                       :output-dir "resources/public/js"
+                                       :asset-path "js"
+                                       :main "audial.frontend"
+                                       :optimizations :none}}}
+                     )
