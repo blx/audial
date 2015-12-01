@@ -2,17 +2,14 @@
 
 Provides an efficient interface for telling the computer to play songs.
 
-This is a very simple concept, yes, but as a Millennial(tm) I *Want Things Now*(tm).
-Or something. Anyway, the goal is to provide a very low-friction search interface
-that queries both the local iTunes library and Spotify, can find songs by lyrics as
-well as more prosaic properties like title or artist, and then makes the music happen.
+Yes, this is a simple concept, but I'm really lazy. Anyway, the goal is to provide a very low-friction search interface that queries both the local iTunes library and Spotify, can find songs by lyrics as well as more prosaic properties like title or artist, and then makes the music happen.
 
 Currently Audial serves up a browser-based, song-searchin' interface right at home
 on localhost:8080.
 Future plans involve desktopifying with Electron and then binding a systemwide
 hotkey to instantly bring up the search interface, analogous to cmd-space for Spotlight.
 
-The API and library structure are heavily volatile at the moment. Exploratory, rather.
+The API and library structure are highly volatile at the moment. Exploratory, rather.
 That's a good word.
 
 ## Installation
