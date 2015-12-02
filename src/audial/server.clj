@@ -41,7 +41,7 @@
       (assoc :url (url-for song))))
 
 (defn highlight-matches [s q]
-  (if (str/blank? q)
+  (if (some empty? [s q])
     s
     (let [pattern (->> q (format "(?i)(%s)") re-pattern)]
       (str/replace s pattern (str "<span class='selected'>$1</span>")))))
