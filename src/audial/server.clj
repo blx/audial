@@ -10,7 +10,8 @@
             [clojure.string :as str]
             [hiccup.core :refer [html]]
             [audial.core :as audial]
-            [audial.control :refer [get-file]]))
+            [audial.control :refer [get-file]]
+            [audial.util :refer [update*]]))
 
 (def url-encode
   (fnil codec/url-encode ""))
@@ -20,33 +21,46 @@
 (def file-prefix
   (env :file-prefix))
 
-(defn url-for [song]
+(defn url-encode-song [song]
   (->> (get-file song)
        (#(str/replace % file-prefix ""))
-       url-encode
+       url-encode))
+
+(defn url-decode-path [path]
+  (->> path
+       url-decode
+       (str file-prefix)))
+
+(defn url-for [song]
+  (->> song
+       url-encode-song
        (str "/play/")))
 
 (defn simplify-song [song]
   (-> (select-keys song [:name :artist :album-artist :album :year :track-number])
       (assoc :url (url-for song))))
 
-(defn highlight-matches [q s]
+(defn highlight-matches [s q]
   (if (str/blank? q)
     s
     (let [pattern (->> q (format "(?i)(%s)") re-pattern)]
       (str/replace s pattern (str "<span class='selected'>$1</span>")))))
 
+(defn highlight-song [q song]
+  (update* song [:name :artist :album] highlight-matches q))
+
 (defn $song [{:keys [name artist album] :as song}]
   [:li
    [:a {:href (url-for song)
+        :onclick (format "ui.core.play('%s'); return false;" (url-encode-song song))
         :tabindex 0}
     name]
    [:span.field artist]
    [:span.field album]])
 
-(defn $results [results]
+(defn $results [results q]
   [:ul
-   (map $song results)])
+   (map #(->> % (highlight-song q) $song) results)])
 
 (defn $search []
   [:form {:action "/search"
@@ -74,15 +88,14 @@
       [:style css]]
      [:body
       ($search)
-      content]]))
+      content
+      [:script {:src "js/ui-core.js"}]]]))
 
 (defn search [q & [in-mem?]]
   (let [result ((if in-mem? audial/play-q' audial/play-q) audial/*songs* q)]
     (-> (if (keyword? result)
           (str result)
-          (->> ($results result)
-               html
-               (highlight-matches q))))))
+          ($results result q)))))
 
 
 (defn play [path]
@@ -122,7 +135,7 @@
   (GET "/play/:path" [path] (render (play path)))
   (GET "/api/songs" [] (response (map simplify-song audial/*songs*)))
   (GET "/api/search" [q] (response (map simplify-song (audial/search audial/*songs* q))))
-  (POST "/api/play" [:as {{path :path} :body}] (response (audial.control/play-file (url-decode path))))
+  (POST "/api/play" {{:keys [path]} :body} (response (audial.control/play-file (url-decode-path path))))
   (route/resources "/"))
 
 (def site

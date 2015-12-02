@@ -33,3 +33,15 @@
   [m f]
   (zipmap (map f (keys m))
           (vals m)))
+
+(defn update*
+  "Like update, but updates all of the keys in ks using f."
+  ([m ks f]
+   (reduce #(update %1 %2 f)
+           m ks))
+  ([m ks f x]
+   (reduce #(update %1 %2 f x)
+           m ks))
+  ([m ks f x & args]
+   (reduce #(apply update %1 %2 f x args)
+           m ks)))

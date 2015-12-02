@@ -27,7 +27,8 @@
                  
                  [org.clojure/clojurescript "1.7.170"]
                  [figwheel "0.5.0-2"]
-                 [reagent "0.5.1"]]
+                 [reagent "0.5.1"]
+                 [cljs-ajax "0.5.1"]]
   
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.0.1"]
