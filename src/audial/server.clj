@@ -43,8 +43,9 @@
 (defn highlight-matches [s q]
   (if (some empty? [s q])
     s
-    (let [pattern (->> q (format "(?i)(%s)") re-pattern)]
-      (str/replace s pattern (str "<span class='selected'>$1</span>")))))
+    (let [pattern (-> (str "(?i)(" q ")")
+                      re-pattern)]
+      (str/replace s pattern "<span class='selected'>$1</span>"))))
 
 (defn highlight-song [q song]
   (update* song [:name :artist :album] highlight-matches q))
@@ -52,7 +53,9 @@
 (defn $song [{:keys [name artist album] :as song}]
   [:li
    [:a {:href (url-for song)
-        :onclick (format "ui.core.play('%s'); return false;" (url-encode-song song))
+        :onclick (str "ui.core.play('"
+                      (url-encode-song song)
+                      "'); return false;")
         :tabindex 0}
     name]
    [:span.field artist]
