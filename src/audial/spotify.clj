@@ -1,17 +1,19 @@
 (ns audial.spotify
   (:require [environ.core :refer [env]]
-            [clj-http.client :as client]
-            [clj-spotify.core :as sp]))
+            [clj-http.client :as http]
+            [clj-spotify.core :as sp]
+            [audial.control :as ctrl]))
 
 (defn get-oauth-token
   "Returns an access token valid for Spotify Web API endpoints that
-  do not require user authorization."
+  do not require user authorization. This follows the 'Client Credentials'
+  flow from <https://developer.spotify.com/web-api/authorization-guide>."
   ; This function is derived from clj-spotify/test/clj_spotify/core_test.clj
   []
   (-> "https://accounts.spotify.com/api/token" 
-      (client/post {:form-params {:grant_type "client_credentials"}
-                    :basic-auth ((juxt :spotify-client-id :spotify-client-secret) env)
-                    :as :json})
+      (http/post {:form-params {:grant_type "client_credentials"}
+                  :basic-auth ((juxt :spotify-client-id :spotify-client-secret) env)
+                  :as :json})
       :body
       :access_token))
 
@@ -44,3 +46,10 @@
                                    lazy-seq))))]
     (lazy-seq
       (wrap (offset-search 0)))))
+
+
+(def tell-spotify
+  (comp ctrl/applescript (partial str "tell app \"Spotify\" to ")))
+
+(defn play-song [song-id]
+  (tell-spotify (str "play track \"spotify:track:" song-id "\"")))
